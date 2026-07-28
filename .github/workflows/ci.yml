@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: 后端 · 端到端 + 评估
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: 配置 Python（按 .python-version）
+        run: uv python install
+
+      - name: 写入 .env（密钥走 GitHub Secrets，零信任）
+        run: |
+          printf 'SENSENOVA_API_KEY=%s\n' "${{ secrets.SENSENOVA_API_KEY }}" > .env
+        shell: bash
+
+      - name: 安装依赖（uv 托管隔离环境）
+        run: uv sync
+
+      - name: 后台启动后端（启动即 re-seed + 重建向量索引）
+        run: |
+          uv run uvicorn zhiqu.api:app --app-dir src --port 8720 > data/server.log 2>&1 &
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8720/api/companies/stats || true)
+            if [ "$code" = "200" ]; then echo "后端就绪 (${i}x2s)"; break; fi
+            sleep 2
+          done
+          curl -s -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:8720/api/companies/stats
+
+      - name: 评估报告（须先于 e2e：样例含美团，e2e 会删美团）
+        run: uv run python scripts/evaluate.py
+
+      - name: 端到端测试（综合 12 断言 + 边界 7 断言）
+        run: |
+          uv run python scripts/e2e_m6.py
+          uv run python scripts/e2e_edge_m6.py
+
+      - name: 上传评估报告（失败也可查）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: data/reports/*.html
+          retention-days: 7
+
+  frontend:
+    name: 前端 · 构建校验
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建校验（验证可编译、产物可托管）
+        run: pnpm build
