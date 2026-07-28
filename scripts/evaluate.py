@@ -47,7 +47,9 @@ SAMPLES: list[dict] = [
     {"q": "你好呀，在吗？", "intent": "闲聊", "hit": False, "fallback": False, "source": None},
     {"q": "今天天气不错", "intent": "闲聊", "hit": False, "fallback": False, "source": None},
     # 库外兜底（应兜底，不命中任何企业）
-    {"q": "茅台股价现在多少？", "intent": "其他", "hit": False, "fallback": True, "source": None},
+    # 注：茅台是真实公司、且问「股价」属财务类 -> 按本系统意图定义（财务/历史/产品…均归企业咨询）
+    # 应判「企业咨询」；其不在知识库内，故仍走兜底（fallback=True, hit=False），验证「库外企业查询正确兜底」。
+    {"q": "茅台股价现在多少？", "intent": "企业咨询", "hit": False, "fallback": True, "source": None},
     {"q": "怎么用 Python 写一个快排？", "intent": "其他", "hit": False, "fallback": True, "source": None},
 ]
 
