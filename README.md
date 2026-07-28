@@ -1,5 +1,7 @@
 # 知企智答 · 企业智能客服 Agent 系统
 
+[![Online Demo](https://img.shields.io/badge/online%20demo-知企智答-60a5fa)](https://43c9e64be89441b38bc2ef459579596b.app.codebuddy.work) [![Eval Accuracy](https://img.shields.io/badge/eval%20accuracy-100%25-brightgreen)](https://github.com/GaussAA/zhiqu-zhida/blob/main/docs/RETROSPECTIVE.md) [![Stack](https://img.shields.io/badge/stack-RAG%20Agent-blue)](https://github.com/GaussAA/zhiqu-zhida)
+
 > 面向「介绍中国互联网公司」场景的 RAG 智能客服 Agent。基于 **deepagents**（LangChain 官方 Agent Harness，底层 LangGraph）编排，配套 FastAPI 服务层、Chromadb 向量检索与 React 19 三页工作台。
 >
 > 项目定位：对外产品演示 / 大模型 Agent 方向求职作品集，展示 **RAG 编排、意图识别、可观测日志、明暗双主题前端** 的真实工程能力。
@@ -138,11 +140,11 @@ agent-server/
 
 ## 🔧 环境要求
 
-| 组件 | 版本 |
-| --- | --- |
-| Python | ≥ 3.13（项目用 `uv` 管理虚拟环境） |
-| Node.js | ≥ 22（前端用 `pnpm` 包管理） |
-| 包管理器 | `uv` + `pnpm` |
+| 组件     | 版本                               |
+| -------- | ---------------------------------- |
+| Python   | ≥ 3.13（项目用 `uv` 管理虚拟环境） |
+| Node.js  | ≥ 22（前端用 `pnpm` 包管理）       |
+| 包管理器 | `uv` + `pnpm`                      |
 
 > Windows 用户建议在 **Git Bash / WSL** 下执行 bash 命令；PowerShell 等价命令在文中一并给出。
 
@@ -215,17 +217,17 @@ bash scripts/start.sh      # 同时拉起前后端（开发模式）
 
 ## 🔌 API 速查
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/chat` | 对话：`{question, session_id?}` → 含 `intent/hit/fallback/sources/model/latency_ms` |
-| POST | `/api/chat/{session_id}/reset` | 清空指定会话内存上下文 |
-| GET | `/api/companies?industry=&status=` | 企业列表（可按行业 / 状态筛选） |
-| POST | `/api/companies` | 新增 / 更新企业条目（自动重建索引） |
-| DELETE | `/api/companies/{id}` | 删除企业条目（自动重建索引） |
-| GET | `/api/companies/stats` | 知识库统计（总数 / 已发布 / 审核中 / 行业分布） |
-| GET | `/api/logs?session_id=&limit=` | 对话日志列表 |
-| GET | `/api/metrics` | 指标：总会话 / 总轮次 / 命中率 / 兜底率 / 平均轮次 |
-| GET | `/api/logs/export?fmt=csv\|json` | 导出全部日志（CSV 用 `utf-8-sig` 防乱码） |
+| 方法   | 路径                               | 说明                                                                                |
+| ------ | ---------------------------------- | ----------------------------------------------------------------------------------- |
+| POST   | `/api/chat`                        | 对话：`{question, session_id?}` → 含 `intent/hit/fallback/sources/model/latency_ms` |
+| POST   | `/api/chat/{session_id}/reset`     | 清空指定会话内存上下文                                                              |
+| GET    | `/api/companies?industry=&status=` | 企业列表（可按行业 / 状态筛选）                                                     |
+| POST   | `/api/companies`                   | 新增 / 更新企业条目（自动重建索引）                                                 |
+| DELETE | `/api/companies/{id}`              | 删除企业条目（自动重建索引）                                                        |
+| GET    | `/api/companies/stats`             | 知识库统计（总数 / 已发布 / 审核中 / 行业分布）                                     |
+| GET    | `/api/logs?session_id=&limit=`     | 对话日志列表                                                                        |
+| GET    | `/api/metrics`                     | 指标：总会话 / 总轮次 / 命中率 / 兜底率 / 平均轮次                                  |
+| GET    | `/api/logs/export?fmt=csv\|json`   | 导出全部日志（CSV 用 `utf-8-sig` 防乱码）                                           |
 
 **对话请求示例：**
 
@@ -267,15 +269,15 @@ uv run python scripts/demo_m4.py    # M4：日志 / 指标 / 导出
 
 ## 🛠️ 技术栈
 
-| 层级 | 技术 |
-| --- | --- |
-| 编排 | `deepagents==0.6.0`（LangChain 官方，底层 LangGraph） |
-| LLM | `sensenova-6.7-flash-lite` → `deepseek-v4-flash`（OpenAI 兼容，失败回退） |
-| Embedding | `bge-small-zh-v1.5`（本地权重，query 侧加指令前缀） |
-| 向量库 | `chromadb`（cosine 距离，持久化） |
-| 服务 | `fastapi` + `uvicorn` |
-| 数据 | `sqlite`（companies + chat_logs 双层） |
-| 前端 | `react 19` + `vite 7` + `typescript 5.8`（strict）+ `tailwindcss v4` |
+| 层级      | 技术                                                                      |
+| --------- | ------------------------------------------------------------------------- |
+| 编排      | `deepagents==0.6.0`（LangChain 官方，底层 LangGraph）                     |
+| LLM       | `sensenova-6.7-flash-lite` → `deepseek-v4-flash`（OpenAI 兼容，失败回退） |
+| Embedding | `bge-small-zh-v1.5`（本地权重，query 侧加指令前缀）                       |
+| 向量库    | `chromadb`（cosine 距离，持久化）                                         |
+| 服务      | `fastapi` + `uvicorn`                                                     |
+| 数据      | `sqlite`（companies + chat_logs 双层）                                    |
+| 前端      | `react 19` + `vite 7` + `typescript 5.8`（strict）+ `tailwindcss v4`      |
 
 ---
 
