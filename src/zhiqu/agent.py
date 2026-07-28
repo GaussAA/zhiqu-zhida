@@ -81,17 +81,33 @@ class AgentAnswer:
 
 
 _TRACE: RetrievalTrace | None = None
+_CURRENT_QUESTION: str | None = None
 
 
 @tool
 def search_company_knowledge(query: str) -> str:
-    """检索企业知识库，返回与 query 最相关的知识块；无命中时返回 NO_HIT。"""
-    global _TRACE
-    chunks = search(query)
+    """检索企业知识库，返回与 query 最相关的知识块；无命中时返回 NO_HIT。
+
+    混合检索：同时用「agent 改写后的 query」与「用户原始问句」检索并去重合并，
+    兼顾多轮指代消解（agent 能解析代词）与短事实问句的忠实召回
+    （避免 LLM 改写削弱语义匹配，例如「百度推出了哪款大模型」被改作「百度 大模型」后距离升高而漏召）。
+    """
+    global _TRACE, _CURRENT_QUESTION
+    queries = [query]
+    if _CURRENT_QUESTION and _CURRENT_QUESTION.strip() != query.strip():
+        queries.append(_CURRENT_QUESTION)
+    merged: list[RetrievedChunk] = []
+    seen_texts: set[str] = set()
+    for q in queries:
+        for c in search(q):
+            if c.text not in seen_texts:
+                seen_texts.add(c.text)
+                merged.append(c)
+    merged.sort(key=lambda c: c.distance)
     if _TRACE is not None:
         _TRACE.calls += 1
-        _TRACE.chunks.extend(chunks)
-    hits = [c for c in chunks if c.hit]
+        _TRACE.chunks.extend(merged)
+    hits = [c for c in merged if c.hit]
     if not hits:
         return "NO_HIT：知识库中没有与该问题足够相关的资料。"
     parts = [f"[来源:{c.company} 距离:{c.distance}]\n{c.text}" for c in hits]
@@ -190,7 +206,7 @@ def answer_question(
     history: list[dict[str, str]] | None = None,
 ) -> AgentAnswer:
     """单次问答入口：意图识别 -> 闲聊直答 / RAG 检索；模型免费优先、失败回退。"""
-    global _TRACE
+    global _TRACE, _CURRENT_QUESTION
     sid = session_id or uuid.uuid4().hex[:12]
     start = time.monotonic()
 
@@ -205,6 +221,7 @@ def answer_question(
     last_err: Exception | None = None
     for model_name in MODEL_CANDIDATES:
         _TRACE = RetrievalTrace()
+        _CURRENT_QUESTION = question
         try:
             agent = _build_agent(model_name)
             result = agent.invoke({"messages": messages})
@@ -233,6 +250,7 @@ def answer_question(
             logger.warning("模型 %s 调用失败，尝试回退: %s", model_name, e)
         finally:
             _TRACE = None
+            _CURRENT_QUESTION = None
 
     latency = int((time.monotonic() - start) * 1000)
     logger.error("所有候选模型均失败: %s", last_err)
