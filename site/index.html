@@ -180,9 +180,23 @@
 
   .report-img {
     margin-top: 22px; border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden;
-    background: var(--surface); backdrop-filter: blur(10px); box-shadow: 0 18px 44px rgba(0,0,0,0.4);
+    background: var(--surface-2); backdrop-filter: blur(10px);
+    box-shadow: 0 18px 44px rgba(0,0,0,0.4);
+    max-height: 480px; overflow-y: auto; position: relative;
   }
   .report-img img { width: 100%; display: block; }
+  .report-img::before {
+    content: "📋 完整评估报告（可滚动查看）";
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-faint);
+    background: rgba(244,244,245,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid #e4e4e7; padding: 7px 14px;
+  }
+  /* subtle scrollbar */
+  .report-img::-webkit-scrollbar { width: 5px; }
+  .report-img::-webkit-scrollbar-track { background: transparent; }
+  .report-img::-webkit-scrollbar-thumb { background: rgba(0,0,0,.2); border-radius: 3px; }
 
   /* architecture layers */
   .layers { display: flex; flex-direction: column; gap: 12px; }
