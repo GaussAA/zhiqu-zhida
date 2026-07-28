@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #09090b; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 32px;
+  }
+  .card {
+    width: 460px; background: #18181b; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+  .top { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 16px; }
+  .top .logo { width: 30px; height: 30px; border-radius: 9px; background: rgba(96,165,250,0.12); color: #60a5fa; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+  .top .name { font-size: 14px; font-weight: 600; }
+  .top .tag { margin-left: auto; font-size: 11px; color: #fbbf24; background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.2); padding: 3px 9px; border-radius: 999px; }
+  .row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .row.user { flex-direction: row-reverse; }
+  .ava { flex: 0 0 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+  .ava.bot { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .ava.u { background: rgba(255,255,255,0.08); color: #d4d4d8; }
+  .bub { max-width: 350px; padding: 11px 14px; border-radius: 13px; font-size: 13.5px; line-height: 1.62; }
+  .row.user .bub { background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
+  .row.bot .bub { background: #232329; color: #e4e4e7; border-bottom-left-radius: 4px; }
+  .fb { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 11.5px; color: #fbbf24; background: rgba(251,191,36,0.09); border: 1px solid rgba(251,191,36,0.18); padding: 3px 9px; border-radius: 8px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="logo">智</div>
+      <div class="name">知企智答</div>
+      <div class="tag">库外 · 优雅兜底</div>
+    </div>
+    <div class="row user">
+      <div class="ava u">你</div>
+      <div class="bub">今天北京天气怎么样？</div>
+    </div>
+    <div class="row bot">
+      <div class="ava bot">智</div>
+      <div class="bub">
+        这个问题超出了我「介绍中国互联网公司」的范围啦～我可以帮你了解腾讯、阿里、字节、美团、京东等企业的成立背景、核心业务与发展历程。要不要换个关于公司的问题？
+        <div class="fb">🚧 不在知识库 · 未编造 · 礼貌引导</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

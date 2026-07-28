@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #09090b; color: #fafafa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 32px;
+  }
+  .card {
+    width: 460px; background: #18181b; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+  .top { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 16px; }
+  .top .logo { width: 30px; height: 30px; border-radius: 9px; background: rgba(96,165,250,0.12); color: #60a5fa; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+  .top .name { font-size: 14px; font-weight: 600; }
+  .top .tag { margin-left: auto; font-size: 11px; color: #60a5fa; background: rgba(96,165,250,0.10); border: 1px solid rgba(96,165,250,0.2); padding: 3px 9px; border-radius: 999px; }
+  .row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .row.user { flex-direction: row-reverse; }
+  .ava { flex: 0 0 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
+  .ava.bot { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .ava.u { background: rgba(255,255,255,0.08); color: #d4d4d8; }
+  .bub { max-width: 340px; padding: 11px 14px; border-radius: 13px; font-size: 13.5px; line-height: 1.62; }
+  .row.user .bub { background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
+  .row.bot .bub { background: #232329; color: #e4e4e7; border-bottom-left-radius: 4px; }
+  .src { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 11.5px; color: #34d399; background: rgba(52,211,153,0.09); border: 1px solid rgba(52,211,153,0.18); padding: 3px 9px; border-radius: 8px; }
+  .src b { color: #6ee7b7; font-weight: 600; }
+  .pron { font-size: 12px; color: #71717a; margin: -4px 0 12px 40px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="logo">智</div>
+      <div class="name">知企智答</div>
+      <div class="tag">多轮 · 指代消解</div>
+    </div>
+    <div class="row user">
+      <div class="ava u">你</div>
+      <div class="bub">字节跳动主要做什么产品？</div>
+    </div>
+    <div class="row bot">
+      <div class="ava bot">智</div>
+      <div class="bub">
+        字节跳动以算法推荐见长，核心产品包括抖音、今日头条、TikTok 等，覆盖短视频、资讯与内容分发。
+        <div class="src">📎 来源：<b>字节跳动</b> · 距离 0.29</div>
+      </div>
+    </div>
+    <div class="pron">↓ 用户用「它」指代上轮企业，无需重述</div>
+    <div class="row user">
+      <div class="ava u">你</div>
+      <div class="bub">它哪年成立的？</div>
+    </div>
+    <div class="row bot">
+      <div class="ava bot">智</div>
+      <div class="bub">
+        字节跳动成立于 2012 年，创始人为张一鸣。
+        <div class="src">📎 来源：<b>字节跳动</b> · 距离 0.30</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

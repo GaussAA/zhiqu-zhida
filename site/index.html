@@ -143,6 +143,22 @@
   .foot .links { display: flex; gap: 18px; margin-top: 10px; }
   .foot a { color: var(--text-dim); }
 
+  /* demo gallery */
+  .demo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .demo-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; transition: transform .18s ease, border-color .18s ease;
+  }
+  .demo-card:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+  .demo-card img { width: 100%; display: block; }
+  .demo-caption { padding: 14px 16px; font-size: 13px; color: var(--text-dim); line-height: 1.5; border-top: 1px solid var(--line); }
+  .demo-caption b { color: var(--text); font-weight: 600; }
+  .report-img {
+    margin-top: 20px; border-radius: var(--radius); border: 1px solid var(--line);
+    overflow: hidden; display: block;
+  }
+  .report-img img { width: 100%; display: block; }
+
   @media (max-width: 820px) {
     .hero h1 { font-size: 34px; }
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -157,6 +173,7 @@
   <div class="wrap nav-in">
     <div class="brand">知企<span>智答</span></div>
     <div class="nav-links">
+      <a href="#demo">真实对话</a>
       <a href="#cap">能力</a>
       <a href="#arch">架构</a>
       <a href="#eval">评估</a>
@@ -173,11 +190,34 @@
     <p>面向「介绍中国互联网公司」场景，用 deepagents 编排 + FastAPI + React 三页工作台，把企业知识库问答做成能跑、能测、能讲清决策的系统。零 API 成本 · 可离线 · 密钥不入库 · 评估可量化。</p>
     <div class="hero-cta">
       <a class="btn primary" href="https://github.com/GaussAA/zhiqu-zhida" target="_blank" rel="noopener">查看源码 ↗</a>
-      <a class="btn" href="#eval">查看评估成绩</a>
-      <a class="btn" href="#story">看踩坑复盘</a>
+      <a class="btn" href="#demo">看真实对话</a>
+      <a class="btn" href="#cap">查看能力</a>
     </div>
   </div>
 </header>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">Live Demo</div>
+      <h2>真实对话 · 三类场景</h2>
+    </div>
+    <div class="demo-grid">
+      <div class="demo-card">
+        <img src="assets/chat1.png" alt="命中带来源引用" loading="lazy" />
+        <div class="demo-caption"><b>命中 + 来源引用</b><br />问「腾讯什么时候成立的？」→ 检索命中，回答附带知识来源与距离阈值。</div>
+      </div>
+      <div class="demo-card">
+        <img src="assets/chat2.png" alt="多轮指代消解" loading="lazy" />
+        <div class="demo-caption"><b>多轮指代消解</b><br />用户用「它」指代上轮企业，Agent 正确消解为「字节跳动」并继续检索。</div>
+      </div>
+      <div class="demo-card">
+        <img src="assets/chat3.png" alt="库外优雅兜底" loading="lazy" />
+        <div class="demo-caption"><b>库外优雅兜底</b><br />天气类问题不在知识库内，系统礼貌引导回企业话题，不编造不硬答。</div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="cap">
   <div class="wrap">
@@ -246,6 +286,9 @@
       </div>
     </div>
     <p style="margin-top:16px;font-size:13.5px;color:var(--text-faint);">平均耗时约 8.2s / 轮（含本地 bge 嵌入与免费模型推理）。评估由 <code style="background:rgba(255,255,255,.06);padding:1px 6px;border-radius:5px;">scripts/evaluate.py</code> 驱动，输出 HTML 报告，可回归、可截图。</p>
+    <div class="report-img">
+      <img src="assets/eval_report_proof.png" alt="评估报告截图：16 条样例 · 综合准确率 100%" loading="lazy" />
+    </div>
   </div>
 </section>
 
