@@ -1,6 +1,6 @@
 # 知企智答 · 企业智能客服 Agent 系统
 
-[![Online Demo](https://img.shields.io/badge/online%20demo-知企智答-60a5fa)](https://43c9e64be89441b38bc2ef459579596b.app.codebuddy.work) [![Eval Accuracy](https://img.shields.io/badge/eval%20accuracy-100%25-brightgreen)](https://github.com/GaussAA/zhiqu-zhida/blob/main/docs/RETROSPECTIVE.md) [![Stack](https://img.shields.io/badge/stack-RAG%20Agent-blue)](https://github.com/GaussAA/zhiqu-zhida)
+[![Online Demo](https://img.shields.io/badge/online%20demo-知企智答-60a5fa)](https://gaussaa.github.io/zhiqu-zhida/) [![Eval Accuracy](https://img.shields.io/badge/eval%20accuracy-100%25-brightgreen)](https://github.com/GaussAA/zhiqu-zhida/blob/main/docs/RETROSPECTIVE.md) [![Stack](https://img.shields.io/badge/stack-RAG%20Agent-blue)](https://github.com/GaussAA/zhiqu-zhida)
 
 > 面向「介绍中国互联网公司」场景的 RAG 智能客服 Agent。基于 **deepagents**（LangChain 官方 Agent Harness，底层 LangGraph）编排，配套 FastAPI 服务层、Chromadb 向量检索与 React 19 三页工作台。
 >
