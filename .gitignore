@@ -18,3 +18,6 @@ __pycache__/
 
 # Node 依赖
 node_modules/
+
+# TypeScript 构建产物
+*.tsbuildinfo
