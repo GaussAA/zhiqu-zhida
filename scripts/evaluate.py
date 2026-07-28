@@ -201,6 +201,11 @@ def main() -> int:
           f"命中正确={m['hit_acc']*100:.1f}% 兜底正确={m['fallback_acc']*100:.1f}% "
           f"平均耗时={m['avg_latency']}ms")
     print(f"报告已生成: {path}")
+    failures = sum(1 for x in m["rows"] if not x["overall"])
+    if failures:
+        print(f"[FAIL] {failures}/{m['n']} 条样例未通过评估，CI 应判红")
+        return 1
+    print("[OK] 全部样例通过评估")
     return 0
 
 
