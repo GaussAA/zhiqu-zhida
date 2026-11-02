@@ -31,6 +31,9 @@ jobs:
 
       - name: 后台启动后端（启动即 re-seed + 重建向量索引）
         run: |
+          # data/ 被 .gitignore 忽略，干净 checkout 中不存在；
+          # 不先建目录会让重定向失败、服务根本起不来（此前 CI 失败的根因）
+          mkdir -p data
           uv run uvicorn zhiqu.api:app --app-dir src --port 8720 > data/server.log 2>&1 &
           for i in $(seq 1 90); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8720/api/companies/stats || true)
