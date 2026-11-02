@@ -39,6 +39,10 @@ jobs:
           done
           curl -s -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:8720/api/companies/stats
 
+      - name: 安全回归护栏（审计不变量 · 约 3s）
+        # 用例自带桩，不依赖 chromadb / sentence-transformers，故无需下模型
+        run: uv run --with pytest pytest tests/test_audit_regression.py -q
+
       - name: 评估报告（须先于 e2e：样例含美团，e2e 会删美团）
         run: uv run python scripts/evaluate.py
 

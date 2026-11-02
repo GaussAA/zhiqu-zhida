@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type Company, type CompanyStats } from "../api";
+import AdminTokenBar from "../AdminTokenBar";
 import { Badge, Card, GhostButton, PrimaryButton, StatCard } from "../ui";
 
 interface CompanyForm {
@@ -18,7 +19,8 @@ const EMPTY_FORM: CompanyForm = {
   ticker: "",
   business: "",
   industry: "",
-  status: "已发布",
+  // 与后端一致：新条目默认「审核中」，避免绕过审核直接进检索面
+  status: "审核中",
   knowledge: "",
 };
 
@@ -69,7 +71,7 @@ export default function KnowledgePage() {
   }
 
   async function remove(id: number, name: string) {
-    if (!window.confirm(`确认删除「${name}」？删除后将重建向量索引。`)) return;
+    if (!window.confirm(`确认删除「${name}」？其索引块将一并移除。`)) return;
     setBusy(true);
     try {
       await api.deleteCompany(id);
@@ -91,6 +93,8 @@ export default function KnowledgePage() {
           {showForm ? "收起表单" : "新增企业"}
         </PrimaryButton>
       </div>
+
+      <AdminTokenBar onSaved={() => void reload()} />
 
       {stats ? (
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
