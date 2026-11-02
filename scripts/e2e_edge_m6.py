@@ -7,12 +7,18 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.request
 import urllib.error
 
 BASE = "http://127.0.0.1:8720"
 HEADERS = {"Content-Type": "application/json"}
+# 管理接口（企业增删查、指标、日志导出）已加 X-Admin-Token 鉴权；
+# 本地无令牌时留空，脚本仍可跑公开的 /api/chat 部分。
+_ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+if _ADMIN_TOKEN:
+    HEADERS["X-Admin-Token"] = _ADMIN_TOKEN
 results: list[tuple[str, bool, str]] = []
 
 
@@ -27,7 +33,7 @@ def _post(path: str, payload: dict) -> tuple[int, object]:
 
 
 def _get(path: str) -> tuple[int, object]:
-    req = urllib.request.Request(BASE + path, method="GET")
+    req = urllib.request.Request(BASE + path, headers=HEADERS, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
@@ -36,7 +42,7 @@ def _get(path: str) -> tuple[int, object]:
 
 
 def _delete(path: str) -> tuple[int, object]:
-    req = urllib.request.Request(BASE + path, method="DELETE")
+    req = urllib.request.Request(BASE + path, headers=HEADERS, method="DELETE")
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
