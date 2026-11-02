@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type ChatLogRow, type Metrics } from "../api";
+import AdminTokenBar from "../AdminTokenBar";
 import { Badge, Card, GhostButton, StatCard } from "../ui";
 
 function pct(v: number): string {
@@ -28,20 +29,32 @@ export default function LogsPage() {
     void reload();
   }, [reload]);
 
+  async function handleExport(fmt: "csv" | "json"): Promise<void> {
+    try {
+      const blob = await api.exportLogs(fmt);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `chat_logs.${fmt}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "导出失败");
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-[#18181B] dark:text-[#FAFAFA]">对话日志审查</h1>
         <div className="flex gap-2">
           <GhostButton onClick={() => void reload()}>刷新</GhostButton>
-          <a href={api.exportUrl("csv")} download>
-            <GhostButton>导出 CSV</GhostButton>
-          </a>
-          <a href={api.exportUrl("json")} download>
-            <GhostButton>导出 JSON</GhostButton>
-          </a>
+          <GhostButton onClick={() => void handleExport("csv")}>导出 CSV</GhostButton>
+          <GhostButton onClick={() => void handleExport("json")}>导出 JSON</GhostButton>
         </div>
       </div>
+
+      <AdminTokenBar onSaved={() => void reload()} />
 
       {metrics ? (
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">

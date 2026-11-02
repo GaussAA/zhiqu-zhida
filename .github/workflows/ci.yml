@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    name: 后端 · 端到端 + 评估
+    name: 后端 · 启动 + 回归护栏（评估/端到端需 LLM 密钥）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,35 +17,119 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Post 步骤的 `uv cache prune` 会与仍在运行的后台 uvicorn / uv 抢缓存锁，
+          # 实测卡满 5 分钟后 exit 2，把整条后端 job 判红。关掉 prune，
+          # 缓存照常还原与保存，只是不做压缩。
+          prune-cache: false
 
       - name: 配置 Python（按 .python-version）
         run: uv python install
 
-      - name: 写入 .env（密钥走 GitHub Secrets，零信任）
-        run: |
-          printf 'SENSENOVA_API_KEY=%s\n' "${{ secrets.SENSENOVA_API_KEY }}" > .env
+      - name: 检测 LLM 密钥可用性
+        id: llm
+        # secrets 上下文不可用于 step.if，故先求值成 output 再判断。
+        # 判据是「真的能用」而非「非空」：密钥存在但已失效时，非空判断会放行，
+        # 结果是评估与端到端必然失败——那正是此前 CI 连红四次的形态。
+        env:
+          SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+          LLM_BASE_URL: https://token.sensenova.cn/v1
         shell: bash
+        run: |
+          set -uo pipefail
+          available=false
+          if [ -z "${SENSENOVA_API_KEY:-}" ]; then
+            reason="未配置 SENSENOVA_API_KEY"
+          else
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+                     -H "Authorization: Bearer $SENSENOVA_API_KEY" \
+                     "$LLM_BASE_URL/models")
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              reason="无法连通 $LLM_BASE_URL（curl exit=$rc）"
+            elif [ "$code" = "200" ]; then
+              available=true
+              reason="密钥可用（GET /models → 200）"
+            else
+              reason="密钥不可用（GET /models → HTTP $code）"
+            fi
+          fi
+          echo "available=$available" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [ "$available" = "true" ]; then
+            echo "✅ $reason"
+          else
+            echo "::notice title=依赖真实 LLM 的步骤将跳过::$reason"
+          fi
+
+      - name: 写入 .env（密钥走 GitHub Secrets，零信任）
+        env:
+          SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+        shell: bash
+        run: |
+          # 经 env 传递后引用变量，不做 ${{ secrets.X }} 直接插值（GitHub 点名的注入反模式）
+          if [ -n "$SENSENOVA_API_KEY" ]; then
+            printf 'SENSENOVA_API_KEY=%s\n' "$SENSENOVA_API_KEY" > .env
+            echo "已写入 .env"
+          else
+            echo "无密钥，跳过 .env 写入"
+          fi
 
       - name: 安装依赖（uv 托管隔离环境）
         run: uv sync
 
       - name: 后台启动后端（启动即 re-seed + 重建向量索引）
+        env:
+          # 管理接口为 fail-closed：不配 ADMIN_TOKEN 一律 503。
+          # CI 内用固定占位值，仅用于本机回环，不涉任何真实凭据。
+          ADMIN_TOKEN: ci-e2e-admin-token
         run: |
+          # data/ 被 .gitignore 忽略，干净 checkout 中不存在；
+          # 不先建目录会让重定向失败、服务根本起不来（此前 CI 失败的根因）
+          mkdir -p data
           uv run uvicorn zhiqu.api:app --app-dir src --port 8720 > data/server.log 2>&1 &
+          # 就绪探针用 /openapi.json：管理接口均需口令，拿它们探测会因 503 空转
           for i in $(seq 1 90); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8720/api/companies/stats || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8720/openapi.json || true)
             if [ "$code" = "200" ]; then echo "后端就绪 (${i}x2s)"; break; fi
             sleep 2
           done
-          curl -s -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:8720/api/companies/stats
+          curl -s -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:8720/openapi.json
+
+      - name: 安全回归护栏（审计不变量 · 约 3s）
+        # 用例自带桩，不依赖 chromadb / sentence-transformers，故无需下模型；
+        # 这是 PR 门禁的核心——不依赖任何外部服务的离线断言
+        run: uv run --with pytest pytest tests/test_audit_regression.py -q
 
       - name: 评估报告（须先于 e2e：样例含美团，e2e 会删美团）
+        if: steps.llm.outputs.available == 'true'
         run: uv run python scripts/evaluate.py
 
       - name: 端到端测试（综合 12 断言 + 边界 7 断言）
+        if: steps.llm.outputs.available == 'true'
+        env:
+          # e2e 会调管理接口（企业增删 / 指标 / 日志导出），须与服务端同口令
+          ADMIN_TOKEN: ci-e2e-admin-token
         run: |
           uv run python scripts/e2e_m6.py
           uv run python scripts/e2e_edge_m6.py
+
+      - name: 跳过说明（密钥不可用时显式留痕）
+        if: steps.llm.outputs.available != 'true'
+        env:
+          SKIP_REASON: ${{ steps.llm.outputs.reason }}
+        run: |
+          {
+            echo "### ⚠️ 依赖真实 LLM 的步骤已跳过"
+            echo ""
+            echo "本次**未**执行：\`scripts/evaluate.py\`（评估报告）、\`scripts/e2e_m6.py\` / \`scripts/e2e_edge_m6.py\`（端到端）。"
+            echo ""
+            echo "原因：${SKIP_REASON}。"
+            echo ""
+            echo "已执行：安全回归护栏 \`tests/test_audit_regression.py\`（19 用例，自带桩、不依赖模型）。"
+            echo ""
+            echo "> 跳过而非忽略：把环境问题伪装成代码问题，换来的是一个永远红、于是没人看的检查。"
+            echo "> 密钥恢复后本步骤自动失效，评估与端到端无需改流水线即会回来。"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 上传评估报告（失败也可查）
         if: always()
@@ -54,6 +138,17 @@ jobs:
           name: eval-report
           path: data/reports/*.html
           retention-days: 7
+          if-no-files-found: ignore
+
+      - name: 收尾：停止后台服务
+        if: always()
+        # 后台 uvicorn 由 `uv run` 拉起，会一直占着环境与缓存锁；
+        # 不显式停掉就成了孤儿进程（日志里出现过 "Terminate orphan process: (uv)"）。
+        run: |
+          pkill -f "uvicorn zhiqu.api:app" || true
+          pkill -f "zhiqu.api:app" || true
+          sleep 1
+          echo "后台服务已停止"
 
   frontend:
     name: 前端 · 构建校验

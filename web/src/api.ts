@@ -52,14 +52,53 @@ export interface Metrics {
   avg_turns: number;
 }
 
+/** 管理口令：仅存 sessionStorage（关标签即失效），不落构建产物。 */
+const TOKEN_KEY = "zhiqu.adminToken";
+
+export function getAdminToken(): string {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function setAdminToken(value: string): void {
+  try {
+    if (value) sessionStorage.setItem(TOKEN_KEY, value);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // 隐私模式下 sessionStorage 可能不可用：忽略，请求将得到 403
+  }
+}
+
+/** 带状态码的错误，便于页面区分「未授权」与其他失败。 */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAdminToken();
+  return token ? { "X-Admin-Token": token } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body.slice(0, 200)}`);
+    throw new ApiError(res.status, `API ${res.status}: ${body.slice(0, 200)}`);
   }
   return (await res.json()) as T;
 }
@@ -87,5 +126,10 @@ export const api = {
   companyStats: () => request<CompanyStats>("/api/companies/stats"),
   logs: (limit = 200) => request<ChatLogRow[]>(`/api/logs?limit=${limit}`),
   metrics: () => request<Metrics>("/api/metrics"),
-  exportUrl: (fmt: "csv" | "json") => `/api/logs/export?fmt=${fmt}`,
+  /** 导出走 fetch + Blob：<a href> 导航无法携带 X-Admin-Token。 */
+  exportLogs: async (fmt: "csv" | "json"): Promise<Blob> => {
+    const res = await fetch(`/api/logs/export?fmt=${fmt}`, { headers: authHeaders() });
+    if (!res.ok) throw new ApiError(res.status, `导出失败：HTTP ${res.status}`);
+    return await res.blob();
+  },
 };

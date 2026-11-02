@@ -10,6 +10,7 @@ import csv
 import json
 import logging
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -21,8 +22,10 @@ from .db import ChatLog, insert_chat_log
 logger = logging.getLogger(__name__)
 
 # 内存会话存储：session_id -> messages（重启即清，日志已持久化在 SQLite）
-_SESSIONS: dict[str, list[dict[str, str]]] = {}
+# 审计 F6：加上界 + LRU，防大量不同 session_id 造成内存无界增长
+_SESSIONS: OrderedDict[str, list[dict[str, str]]] = OrderedDict()
 _MAX_HISTORY_TURNS = 6  # 只保留最近 N 轮，防上下文膨胀
+_MAX_SESSIONS = 1000  # 最多保留的会话数
 
 
 def chat(question: str, session_id: str | None = None) -> AgentAnswer:
@@ -38,6 +41,9 @@ def chat(question: str, session_id: str | None = None) -> AgentAnswer:
         {"role": "assistant", "content": result.answer},
     ]
     _SESSIONS[sid] = history[-_MAX_HISTORY_TURNS * 2 :]
+    _SESSIONS.move_to_end(sid)
+    while len(_SESSIONS) > _MAX_SESSIONS:
+        _SESSIONS.popitem(last=False)
 
     turn = len(_SESSIONS[sid]) // 2
     try:

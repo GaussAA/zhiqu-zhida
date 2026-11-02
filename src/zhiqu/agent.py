@@ -16,6 +16,8 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
+import contextvars
+
 from .config import MODEL_CANDIDATES, SENSENOVA_API_KEY, SENSENOVA_BASE_URL
 from .intent import INTENT_CHITCHAT, classify_intent
 from .vectorstore import RetrievedChunk, search
@@ -80,8 +82,14 @@ class AgentAnswer:
     session_id: str
 
 
-_TRACE: RetrievalTrace | None = None
-_CURRENT_QUESTION: str | None = None
+# 请求作用域状态：模块级 global 在 FastAPI 线程池并发时会跨请求串扰（审计 F4），
+# 改为 ContextVar —— 每个请求上下文独立，线程池复制 context 时天然隔离。
+_TRACE: contextvars.ContextVar[RetrievalTrace | None] = contextvars.ContextVar(
+    "zhiqu_trace", default=None
+)
+_CURRENT_QUESTION: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "zhiqu_current_question", default=None
+)
 
 
 @tool
@@ -92,10 +100,11 @@ def search_company_knowledge(query: str) -> str:
     兼顾多轮指代消解（agent 能解析代词）与短事实问句的忠实召回
     （避免 LLM 改写削弱语义匹配，例如「百度推出了哪款大模型」被改作「百度 大模型」后距离升高而漏召）。
     """
-    global _TRACE, _CURRENT_QUESTION
+    trace = _TRACE.get()
+    current_question = _CURRENT_QUESTION.get()
     queries = [query]
-    if _CURRENT_QUESTION and _CURRENT_QUESTION.strip() != query.strip():
-        queries.append(_CURRENT_QUESTION)
+    if current_question and current_question.strip() != query.strip():
+        queries.append(current_question)
     merged: list[RetrievedChunk] = []
     seen_texts: set[str] = set()
     for q in queries:
@@ -104,9 +113,9 @@ def search_company_knowledge(query: str) -> str:
                 seen_texts.add(c.text)
                 merged.append(c)
     merged.sort(key=lambda c: c.distance)
-    if _TRACE is not None:
-        _TRACE.calls += 1
-        _TRACE.chunks.extend(merged)
+    if trace is not None:
+        trace.calls += 1
+        trace.chunks.extend(merged)
     hits = [c for c in merged if c.hit]
     if not hits:
         return "NO_HIT：知识库中没有与该问题足够相关的资料。"
@@ -206,7 +215,6 @@ def answer_question(
     history: list[dict[str, str]] | None = None,
 ) -> AgentAnswer:
     """单次问答入口：意图识别 -> 闲聊直答 / RAG 检索；模型免费优先、失败回退。"""
-    global _TRACE, _CURRENT_QUESTION
     sid = session_id or uuid.uuid4().hex[:12]
     start = time.monotonic()
 
@@ -220,13 +228,14 @@ def answer_question(
 
     last_err: Exception | None = None
     for model_name in MODEL_CANDIDATES:
-        _TRACE = RetrievalTrace()
-        _CURRENT_QUESTION = question
+        trace_var = RetrievalTrace()
+        _TRACE.set(trace_var)
+        _CURRENT_QUESTION.set(question)
         try:
             agent = _build_agent(model_name)
             result = agent.invoke({"messages": messages})
             answer = _extract_final_text(result.get("messages", []))
-            trace = _TRACE
+            trace = _TRACE.get() or trace_var
             hit = trace.hit
             fallback = not hit
             if fallback and not answer:
@@ -249,8 +258,8 @@ def answer_question(
             last_err = e
             logger.warning("模型 %s 调用失败，尝试回退: %s", model_name, e)
         finally:
-            _TRACE = None
-            _CURRENT_QUESTION = None
+            _TRACE.set(None)
+            _CURRENT_QUESTION.set(None)
 
     latency = int((time.monotonic() - start) * 1000)
     logger.error("所有候选模型均失败: %s", last_err)
