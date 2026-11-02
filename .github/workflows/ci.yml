@@ -17,6 +17,10 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Post 步骤的 `uv cache prune` 会与仍在运行的后台 uvicorn / uv 抢缓存锁，
+          # 实测卡满 5 分钟后 exit 2，把整条后端 job 判红。关掉 prune，
+          # 缓存照常还原与保存，只是不做压缩。
+          prune-cache: false
 
       - name: 配置 Python（按 .python-version）
         run: uv python install
@@ -135,6 +139,16 @@ jobs:
           path: data/reports/*.html
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: 收尾：停止后台服务
+        if: always()
+        # 后台 uvicorn 由 `uv run` 拉起，会一直占着环境与缓存锁；
+        # 不显式停掉就成了孤儿进程（日志里出现过 "Terminate orphan process: (uv)"）。
+        run: |
+          pkill -f "uvicorn zhiqu.api:app" || true
+          pkill -f "zhiqu.api:app" || true
+          sleep 1
+          echo "后台服务已停止"
 
   frontend:
     name: 前端 · 构建校验
