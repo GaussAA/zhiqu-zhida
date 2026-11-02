@@ -23,17 +23,38 @@ jobs:
 
       - name: 检测 LLM 密钥可用性
         id: llm
-        # secrets 上下文不可用于 step.if，故先求值成 output 再判断
+        # secrets 上下文不可用于 step.if，故先求值成 output 再判断。
+        # 判据是「真的能用」而非「非空」：密钥存在但已失效时，非空判断会放行，
+        # 结果是评估与端到端必然失败——那正是此前 CI 连红四次的形态。
         env:
           SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+          LLM_BASE_URL: https://token.sensenova.cn/v1
         shell: bash
         run: |
-          if [ -n "$SENSENOVA_API_KEY" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-            echo "✅ 密钥已配置：评估与端到端将执行。"
+          set -uo pipefail
+          available=false
+          if [ -z "${SENSENOVA_API_KEY:-}" ]; then
+            reason="未配置 SENSENOVA_API_KEY"
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=未配置 SENSENOVA_API_KEY::依赖真实 LLM 的「评估报告」与「端到端测试」已跳过；安全回归护栏仍会执行。"
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+                     -H "Authorization: Bearer $SENSENOVA_API_KEY" \
+                     "$LLM_BASE_URL/models")
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              reason="无法连通 $LLM_BASE_URL（curl exit=$rc）"
+            elif [ "$code" = "200" ]; then
+              available=true
+              reason="密钥可用（GET /models → 200）"
+            else
+              reason="密钥不可用（GET /models → HTTP $code）"
+            fi
+          fi
+          echo "available=$available" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [ "$available" = "true" ]; then
+            echo "✅ $reason"
+          else
+            echo "::notice title=依赖真实 LLM 的步骤将跳过::$reason"
           fi
 
       - name: 写入 .env（密钥走 GitHub Secrets，零信任）
@@ -88,19 +109,22 @@ jobs:
           uv run python scripts/e2e_m6.py
           uv run python scripts/e2e_edge_m6.py
 
-      - name: 跳过说明（无密钥时显式留痕）
+      - name: 跳过说明（密钥不可用时显式留痕）
         if: steps.llm.outputs.available != 'true'
+        env:
+          SKIP_REASON: ${{ steps.llm.outputs.reason }}
         run: |
           {
             echo "### ⚠️ 依赖真实 LLM 的步骤已跳过"
             echo ""
             echo "本次**未**执行：\`scripts/evaluate.py\`（评估报告）、\`scripts/e2e_m6.py\` / \`scripts/e2e_edge_m6.py\`（端到端）。"
             echo ""
-            echo "原因：未配置可用的 \`SENSENOVA_API_KEY\`。"
+            echo "原因：${SKIP_REASON}。"
             echo ""
             echo "已执行：安全回归护栏 \`tests/test_audit_regression.py\`（19 用例，自带桩、不依赖模型）。"
             echo ""
             echo "> 跳过而非忽略：把环境问题伪装成代码问题，换来的是一个永远红、于是没人看的检查。"
+            echo "> 密钥恢复后本步骤自动失效，评估与端到端无需改流水线即会回来。"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 上传评估报告（失败也可查）
